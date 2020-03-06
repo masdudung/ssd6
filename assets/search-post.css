@@ -1,0 +1,16 @@
+/*
+lala
+*/
+
+ul.ui-autocomplete{
+    border: 1px solid #000;
+    width: 500px;
+}
+ul.ui-autocomplete li{
+    padding: 10px;
+    list-style: none;
+    margin-left: -40px;
+}
+.ui-menu-item{
+    background-color:#fff;
+}

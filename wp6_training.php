@@ -12,8 +12,6 @@
 
 class wp6_training {
 
-    private $search_result = null;
-
     function __construct()
     {
         # register menu to admin page
@@ -32,38 +30,21 @@ class wp6_training {
     {
         ?>
         <br>
-        <form class="form-inline" action="<?php echo esc_url( $_SERVER['REQUEST_URI'] );?>" method="post">
+        <form class="form-inline" action="<?php echo esc_url( $_SERVER['REQUEST_URI'] );?>" method="GET">
             <div class="form-group mb-2">
                 <input type="text" autocomplete="off" class="form-control" id="post_title" name="post_title" value="<?php if( isset( $_POST["post_title"] ) ? esc_attr( $_POST["post_title"] ) : '' ) ?>">
-                <button type="submit" name="do_search" class="btn btn-primary">search</button>
+                <button type="submit" class="btn btn-primary">search</button>
             </div>
         </form>
         <?php
 
-        // The Loop
-        if($this->search_result)
-        {
-            if ( $this->search_result->have_posts() ) {
-                echo '<ul>';
-                while ( $this->search_result->have_posts() ) {
-                    $this->search_result->the_post();
-                    echo '<li>' . get_the_title() . '</li>';
-                }
-                echo '</ul>';
-                $this->pagination($this->search_result);
-            } else {
-                echo "no posts found";
-            }
-        }
     }
 
     function do_search()
     {
-        if(isset( $_POST['do_search'] ))
+        $post_title = isset($_GET['post_title']) ? sanitize_text_field( $_GET['post_title'] ) : '';
+        if($post_title != '')
         {
-            // $get_post_title = isset($_GET['post_title']) ? sanitize_text_field( $_GET['post_title'] ) : ''; 
-            $post_title = isset($_POST['post_title']) ? sanitize_text_field( $_POST['post_title'] ) : '';  
- 
             $paged = ( get_query_var( 'paged' ) ) ? absint( get_query_var( 'paged' ) ) : 1;
             $args = array(
                 'posts_per_page' => 3,
@@ -74,25 +55,29 @@ class wp6_training {
             );
             
             add_filter( 'posts_where', [$this, 'title_filter'], 10, 2 );
-            $the_query = new WP_Query( $args );
-            remove_filter( 'posts_where', [$this, 'title_filter'], 10, 2 );
-            
-            $this->search_result = $the_query; 
-            // wp_reset_postdata();
+            $posts = new WP_Query( $args );
+            if ($posts->have_posts()) :
+                while ($posts->have_posts()) : $posts->the_post();
+                    echo "<div class='post-wrap'>";
+                    $title = get_the_title();
+                    echo "<a href='". get_permalink() ."'>$title</a>";
+                    the_excerpt();
+                    echo "</div>";
+                endwhile;
+            endif;
 
-        }
+            $this->pagination($posts);
+            remove_filter( 'posts_where', [$this, 'title_filter'], 10, 2 );
+        }  
     }
 
-    function pagination($wp_query)
+    function pagination($posts)
     {
-        // global $wp_query;
-        $big = 999999999; // need an unlikely integer
-        echo paginate_links( array(
-            'base' => str_replace( $big, '%#%', esc_url( get_pagenum_link( $big ) ) ),
-            'format' => '?paged=%#%&sasa=lala',
-            'current' => max( 1, get_query_var('paged') ),
-            'total' => $wp_query->max_num_pages
-        ) );
+        echo "<div class='page-nav-container'>" . paginate_links(array(
+            'total' => $posts->max_num_pages,
+            'prev_text' => __('<'),
+            'next_text' => __('>')
+        )) . "</div>";
     }
 
     function title_filter( $where, $wp_query )
@@ -106,13 +91,14 @@ class wp6_training {
 
     public function search_form_shortcode() {
         ob_start();
-        $this->do_search();
         $this->search_form();
+        $this->do_search();
         return ob_get_clean();
     }
 
 
     function enqueue_my_frontend_script() {
+        wp_enqueue_style('search-post', plugin_dir_url( __FILE__ ) . 'assets/search-post.css' );
         wp_enqueue_script( 'jquery-ui-autocomplete' );
         wp_enqueue_script( 
             'my-script', 
