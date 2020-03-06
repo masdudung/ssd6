@@ -19,9 +19,8 @@ jQuery(document).ready(function($) {
                 success: function (data) {
                     console.log(data)
 
-                    var data = JSON.parse(data)
                     if (data != null) {
-                        response(data.data);
+                        response(data);
                     }
                 },
                 error: function(result) {

@@ -40,9 +40,20 @@ class wp6_training {
         </form>
         <?php
 
+        // The Loop
         if($this->search_result)
         {
-            var_dump($this->search_result);
+            if ( $this->search_result->have_posts() ) {
+                echo '<ul>';
+                while ( $this->search_result->have_posts() ) {
+                    $this->search_result->the_post();
+                    echo '<li>' . get_the_title() . '</li>';
+                }
+                echo '</ul>';
+                $this->pagination($this->search_result);
+            } else {
+                echo "no posts found";
+            }
         }
     }
 
@@ -50,20 +61,47 @@ class wp6_training {
     {
         if(isset( $_POST['do_search'] ))
         {
-            $post_title = sanitize_text_field( $_POST["post_title"] );
-
-            global $wpdb; 
-            $publish_posts = $wpdb->get_results( 
-                "
-                SELECT * 
-                FROM $wpdb->posts
-                WHERE post_title like '%". $post_title ."%' 
-                AND post_status = 'publish'"
+            // $get_post_title = isset($_GET['post_title']) ? sanitize_text_field( $_GET['post_title'] ) : ''; 
+            $post_title = isset($_POST['post_title']) ? sanitize_text_field( $_POST['post_title'] ) : '';  
+ 
+            $paged = ( get_query_var( 'paged' ) ) ? absint( get_query_var( 'paged' ) ) : 1;
+            $args = array(
+                'posts_per_page' => 3,
+                'post_type' => 'post',
+                'post_status' => 'publish',
+                'search_post_title' => $post_title,
+                'paged' => $paged,
             );
-
-            $this->search_result = $publish_posts;
+            
+            add_filter( 'posts_where', [$this, 'title_filter'], 10, 2 );
+            $the_query = new WP_Query( $args );
+            remove_filter( 'posts_where', [$this, 'title_filter'], 10, 2 );
+            
+            $this->search_result = $the_query; 
+            // wp_reset_postdata();
 
         }
+    }
+
+    function pagination($wp_query)
+    {
+        // global $wp_query;
+        $big = 999999999; // need an unlikely integer
+        echo paginate_links( array(
+            'base' => str_replace( $big, '%#%', esc_url( get_pagenum_link( $big ) ) ),
+            'format' => '?paged=%#%&sasa=lala',
+            'current' => max( 1, get_query_var('paged') ),
+            'total' => $wp_query->max_num_pages
+        ) );
+    }
+
+    function title_filter( $where, $wp_query )
+    {
+        global $wpdb;
+        if ( $search_term = $wp_query->get( 'search_post_title' ) ) {
+            $where .= ' AND ' . $wpdb->posts . '.post_title LIKE \'%' . $wpdb->esc_like( $search_term )  . '%\'';
+        }
+        return $where;
     }
 
     public function search_form_shortcode() {
@@ -89,11 +127,10 @@ class wp6_training {
         wp_localize_script('my-script', "test", $variables);
     }
 
-
     # ajax handler function
     function search_post_handler() 
     {
-        $keyword = $_POST['keyword'];
+        $keyword = isset($_POST['keyword']) ? sanitize_text_field( $_POST['keyword'] ) : '';  
 
         global $wpdb; 
         $publish_posts = $wpdb->get_results( 
@@ -101,6 +138,7 @@ class wp6_training {
             SELECT post_title 
             FROM $wpdb->posts
             WHERE post_title like '%". $keyword ."%' 
+            AND post_type = 'post'
             AND post_status = 'publish'"
         );
 
@@ -110,9 +148,7 @@ class wp6_training {
             array_push ($result, $publish_post->post_title);
         }
 
-        echo json_encode(array('data'=>$result));
-
-        wp_die(); // this is required to terminate immediately and return a proper response
+        wp_send_json( $result );
     }
 
 }
