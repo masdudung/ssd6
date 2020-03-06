@@ -98,11 +98,11 @@ class wp6_training {
 
 
     function enqueue_my_frontend_script() {
-        wp_enqueue_style('search-post', plugin_dir_url( __FILE__ ) . 'assets/search-post.css' );
+        wp_enqueue_style('search-post', plugin_dir_url( __FILE__ ) . 'assets/css/search-post.css' );
         wp_enqueue_script( 'jquery-ui-autocomplete' );
         wp_enqueue_script( 
             'my-script', 
-            plugin_dir_url(__FILE__).'/include/search_post.js', 
+            plugin_dir_url(__FILE__).'/assets/js/search_post.js', 
             array('jquery'), null, true 
         );
         
